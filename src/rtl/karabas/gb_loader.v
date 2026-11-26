@@ -11,7 +11,8 @@
  reads the header (mapper, ROM / RAM size, CGB flag) and builds the ROM mask from the addresses.
 
  cart_ready from the end of the first file on; loading while a file comes (the top holds the machine
- in reset meanwhile).
+ in reset meanwhile). has_timer: the cartridge type (header byte 0147) is MBC3 + TIMER (0F, 10): its
+ .sav gets the RTC sector.
 */
 module gb_loader (
 	input  wire        clk,
@@ -31,7 +32,8 @@ module gb_loader (
 	output reg  [15:0] dl_data = 16'd0,
 
 	output reg         loading = 1'b0,
-	output reg         cart_ready = 1'b0
+	output reg         cart_ready = 1'b0,
+	output reg         has_timer = 1'b0
 );
 
 reg [7:0] lo = 8'd0;
@@ -45,6 +47,8 @@ always @(posedge clk) begin
 	dl <= file_active;
 
 	if (file_wr) begin
+		if (file_addr == 32'h147)
+			has_timer <= file_data == 8'h0F || file_data == 8'h10;
 		if (!file_addr[0])
 			lo <= file_data;
 		else begin

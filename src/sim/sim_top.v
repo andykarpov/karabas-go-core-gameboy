@@ -49,7 +49,7 @@ gb_loader loader (
 	.file_active(file_active), .file_wr(file_wr), .file_addr(file_addr), .file_data(file_data),
 	.sdr_addr(ld_sdr_addr), .sdr_din(ld_sdr_din), .sdr_req(ld_sdr_req),
 	.dl(dl), .dl_wr(dl_wr), .dl_addr(dl_addr), .dl_data(dl_data),
-	.loading(loading), .cart_ready(cart_ready)
+	.loading(loading), .cart_ready(cart_ready), .has_timer()
 );
 
 reg [7:0] rst_cnt = 8'd0;
@@ -70,7 +70,8 @@ gb_machine gb (
 	.dl(dl), .dl_wr(dl_wr), .dl_addr(dl_addr), .dl_data(dl_data), .dl_wait(),
 	.mem_rd(mem_rd), .mem_wr(mem_wr), .mem_cram(mem_cram), .mem_addr(mem_addr),
 	.mem_cram_addr(mem_cram_addr), .mem_din(mem_din), .mem_q(mem_q),
-	.rtc_time(33'd0),
+	.ram_mask_file(), .has_save(), .bram_save(),
+	.rtc_time(33'd0), .bk_rtc_wr(1'b0), .bk_addr(17'd0), .bk_data(16'd0), .rtc_timestamp(), .rtc_savedtime(),
 	.lcd_ce(lcd_ce), .lcd_clkena(lcd_clkena), .lcd_data(lcd_data), .lcd_data_gb(lcd_data_gb),
 	.lcd_mode(), .lcd_on(lcd_on), .lcd_vsync(lcd_vsync), .is_gbc(is_gbc),
 	.audio_l(audio_l), .audio_r(audio_r), .speed()

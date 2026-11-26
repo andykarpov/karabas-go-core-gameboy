@@ -15,6 +15,7 @@
 //   --keys HEX@F      from frame F on, joy = HEX ({start, select, b, a, down, up, left, right})
 //   --expect-ppm FILE the last frame must equal this PPM (P6 160 x 144)
 //   --trace N         print the first N cartridge reads (clock, address, data)
+//   --cram-dump FILE  write the cartridge RAM (128 KB) at the end
 // Prints one line per frame (checksum, pixels) and "PASS" / "FAIL: ..." at the end.
 
 #include "Vgb_machine.h"
@@ -67,7 +68,7 @@ static bool read_ppm(const std::string &f, std::vector<uint8_t> &d) {
 
 int main(int argc, char **argv) {
 	Verilated::commandArgs(argc, argv);
-	std::string romf, ppm, expect;
+	std::string romf, ppm, expect, cramf;
 	int frames = 10, model = 0, trace = 0;
 	bool slow = false;
 	struct Key { int frame, val; };
@@ -82,6 +83,7 @@ int main(int argc, char **argv) {
 		else if (a == "--slow-boot") slow = true;
 		else if (a == "--trace") trace = atoi(nx().c_str());
 		else if (a == "--expect-ppm") expect = nx();
+		else if (a == "--cram-dump") cramf = nx();
 		else if (a == "--keys") {
 			std::string s = nx(); size_t p = 0;
 			while (p < s.size()) {
@@ -158,6 +160,7 @@ int main(int argc, char **argv) {
 		edge_fall();
 	}
 	if (!ppm.empty()) write_ppm(ppm + ".ppm");
+	if (!cramf.empty()) { FILE *o = fopen(cramf.c_str(), "wb"); if (o) { fwrite(cram.data(), 1, cram.size(), o); fclose(o); } }
 	if (frame < frames) { printf("FAIL: only %d frames in %llu clocks\n", frame, (unsigned long long)clocks); return 1; }
 	if (!expect.empty()) {
 		std::vector<uint8_t> ref;

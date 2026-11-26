@@ -38,8 +38,20 @@ module gb_machine (
 	output  [7:0] mem_din,
 	input   [7:0] mem_q,
 
-	// cartridge RTC (MBC3), Ф2
+	// the save of the cartridge (MiSTer Gameboy.sv): the size of its RAM in the .sav (sectors - 1,
+	// 0 = none), a battery RAM to save, RAM kept in block RAM (MBC7, TAMA5: not saved here)
+	output  [7:0] ram_mask_file,
+	output        has_save,
+	output        bram_save,
+
+	// cartridge RTC (MBC3): the time (hps_io TIMESTAMP: { toggle, Unix seconds }), the RTC sector of
+	// the .sav (words 0..4 of bk_addr with bk_rtc_wr; word 4 loads it), the values to save
 	input  [32:0] rtc_time,
+	input         bk_rtc_wr,
+	input  [16:0] bk_addr,
+	input  [15:0] bk_data,
+	output [31:0] rtc_timestamp,
+	output [47:0] rtc_savedtime,
 
 	// video: one pixel per clock with lcd_ce & lcd_clkena (as MiSTer lcd.v), 160 x 144
 	output        lcd_ce,        // the 4 MHz enable of the machine
@@ -134,13 +146,13 @@ cart_top u_cart (
 	.dn_write(), .cart_ready(),
 	.is_cram_addr(mem_cram), .cram_rd(), .cram_wr(mem_wr), .cram_bram_wr(), .cram_addr(mem_cram_addr),
 	.cart_download(dl),
-	.ram_mask_file(), .ram_size(cart_ram_size), .has_save(), .bram_save(),
+	.ram_mask_file(ram_mask_file), .ram_size(cart_ram_size), .has_save(has_save), .bram_save(bram_save),
 	.isGBC_game(isGBC_game), .isSGB_game(),
 	.ioctl_download(dl), .ioctl_wr(dl_wr), .ioctl_addr(dl_addr), .ioctl_dout(dl_data), .ioctl_wait(dl_wait),
-	.bk_wr(1'b0), .bk_rtc_wr(1'b0), .bk_addr(17'd0), .bk_data(16'd0), .bk_q(), .img_size(64'd0),
+	.bk_wr(1'b0), .bk_rtc_wr(bk_rtc_wr), .bk_addr(bk_addr), .bk_data(bk_data), .bk_q(), .img_size(64'd0),
 	.rom_di(mem_q),
 	.joystick_analog_0(16'd0),
-	.ce_32k(ce_32k), .RTC_time(rtc_time), .RTC_timestampOut(), .RTC_savedtimeOut(), .RTC_inuse(),
+	.ce_32k(ce_32k), .RTC_time(rtc_time), .RTC_timestampOut(rtc_timestamp), .RTC_savedtimeOut(rtc_savedtime), .RTC_inuse(),
 	.SaveStateExt_Din(ss_ext_din), .SaveStateExt_Adr(ss_ext_adr), .SaveStateExt_wren(ss_ext_wren),
 	.SaveStateExt_rst(ss_ext_rst), .SaveStateExt_Dout(ss_ext_dout),
 	.savestate_load(1'b0), .savestate_ovr(1'b0),

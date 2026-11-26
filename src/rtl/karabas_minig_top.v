@@ -10,6 +10,9 @@
  the SRAM frame buffer writes, the audio), clk_ram 100.71 MHz (3 x clk_sys: the SDRAM), clk_vid
  40 MHz (800 x 600 at 60 Hz, the OSD, HDMI; FT_CLK_OUT 8 MHz), clk_ser / clk_ser_n 200 MHz.
 
+ Saves: kg_bk_ram (.sav: the cartridge RAM, and the MBC3 clock as the RTC sector of MiSTer)
+ through gb_bk.v; the MBC3 clock gets the time of the firmware RTC (gb_rtc.v).
+
  Memory: the cartridge ROM (up to 8 MB) and the cartridge RAM (at 8 MB) in the SDRAM (gb_sdram.v,
  the MiSTer WonderSwan controller, through gb_mem.v); the RAMs of the machine in block RAM (boot ROM:
  the SameBoy-based DMG / CGB ones of MiSTer, MIT); the SRAM holds the ring of frame buffers of
@@ -179,6 +182,16 @@ assign MCU_IO[1] = mcu_int;
 assign MCU_IO[0] = 1'bz;
 assign MCU_IO[5:2] = 4'bzzzz;
 
+// the .sav file of kg_bk_ram (slot 0) on the mounter of kg_mcu2
+wire [7:0] img_flush, sdc_img_mounted, sdc_rd, sdc_wr, sdc_byte_in_data, sdc_byte_out_data, bk_kind, bk_result;
+wire [63:0] sdc_img_size;
+wire [31:0] sdc_sector, bk_size;
+wire sdc_busy, sdc_done, sdc_error, sdc_byte_in_strobe, bk_mount, bk_flushed;
+wire [2:0] sdc_slot;
+wire [8:0] sdc_byte_addr;
+
+wire [7:0] rtc_a, rtc_do;
+
 wire [55:0] hid_kbd;
 wire [15:0] joy_l16, joy_r16;
 wire [1:0] ld_kind;
@@ -199,12 +212,13 @@ wire [5:0] osd_pw;
 
 
 kg_mcu2 #(
-	.CAPS(16'h0000),     // Ф2: 16'h0002 (backup RAM) with the .sav of the cartridge RAM
+	.CAPS(16'h0002),     // backup RAM: the firmware flushes the .sav before a new game
 	.SW_N(4),
 	.CS_FILTER(3),
 	.ENABLE_OSD(1),
-	.ENABLE_IMG(0),      // Ф2: the .sav file of kg_bk_ram
-	.ENABLE_RTC(0),      // Ф2: the firmware clock for the MBC3 RTC
+	.ENABLE_IMG(1),      // the .sav file of kg_bk_ram
+	.IMG_OUT_LATENCY(2), // the sector buffer of kg_bk_ram
+	.ENABLE_RTC(1),      // the firmware clock for the MBC3 RTC
 	.ENABLE_AUX(0),
 	.ENABLE_FT(1),
 	.ENABLE_SD2(1)
@@ -235,20 +249,20 @@ kg_mcu2 #(
 	.OSD_FG(osd_fg), .OSD_BG(osd_bg), .OSD_ALPHA(osd_alpha), .OSD_PX(osd_px), .OSD_PY(osd_py),
 	.OSD_PW(osd_pw), .OSD_PH(osd_ph), .OSD_PLACE(osd_place), .OSD_ZOOM(osd_zoom),
 
-	.SDC_IMG_MOUNTED(), .SDC_IMG_SIZE(),
-	.SDC_RD(8'd0), .SDC_WR(8'd0), .SDC_SECTOR(32'd0),
-	.SDC_BUSY(), .SDC_DONE(), .SDC_ERROR(), .SDC_SLOT(),
-	.SDC_BYTE_IN_STROBE(), .SDC_BYTE_ADDR(),
-	.SDC_BYTE_IN_DATA(), .SDC_BYTE_OUT_DATA(8'd0),
-	.IMG_WP(), .IMG_PHYS_WR(), .IMG_PHYS(), .IMG_FLUSH(), .FDD_CHNG_WR(), .FDD_CHNG(),
+	.SDC_IMG_MOUNTED(sdc_img_mounted), .SDC_IMG_SIZE(sdc_img_size),
+	.SDC_RD(sdc_rd), .SDC_WR(sdc_wr), .SDC_SECTOR(sdc_sector),
+	.SDC_BUSY(sdc_busy), .SDC_DONE(sdc_done), .SDC_ERROR(sdc_error), .SDC_SLOT(sdc_slot),
+	.SDC_BYTE_IN_STROBE(sdc_byte_in_strobe), .SDC_BYTE_ADDR(sdc_byte_addr),
+	.SDC_BYTE_IN_DATA(sdc_byte_in_data), .SDC_BYTE_OUT_DATA(sdc_byte_out_data),
+	.IMG_WP(), .IMG_PHYS_WR(), .IMG_PHYS(), .IMG_FLUSH(img_flush), .FDD_CHNG_WR(), .FDD_CHNG(),
 	.FDD_CHNG_REQ(1'b0), .FDD_CHNG_DS(2'd0),
-	.BK_MOUNT(1'b0), .BK_FLUSHED(1'b0), .BK_SLOT(3'd0), .BK_SIZE(32'd0),
-	.BK_KIND(8'd0), .BK_RESULT(8'd0),
+	.BK_MOUNT(bk_mount), .BK_FLUSHED(bk_flushed), .BK_SLOT(3'd0), .BK_SIZE(bk_size),
+	.BK_KIND(bk_kind), .BK_RESULT(bk_result),
 	.IMG_ACTIVE(),
 
 	.PORT_OUT_DATA(), .PORT_OUT_WR(), .PORT_OUT_READY(4'b1111), .PORT_IN_DATA(32'd0), .PORT_IN_WR(4'd0),
 	.PORT_CFG(128'd0), .PORT_IN_FULL(), .PORT_STAT(), .PORT_STAT_WR(),
-	.RTC_A(8'd0), .RTC_DI(8'd0), .RTC_CS(1'b0), .RTC_WR_N(1'b1), .RTC_DO(),
+	.RTC_A(rtc_a), .RTC_DI(8'd0), .RTC_CS(1'b0), .RTC_WR_N(1'b1), .RTC_DO(rtc_do),
 	.MATRIX_CMD(24'd0), .MATRIX_CMD_WR(1'b0), .DEBUG_ADDR(16'd0), .DEBUG_DATA(16'd0),
 
 	.FT_SPI_ON(ft_spi_on), .FT_VGA_ON(), .FT_RESET(), .FT_SCK(), .FT_MOSI(ft_mosi), .FT_MISO(FT_SPI_MISO),
@@ -277,7 +291,7 @@ wire file_wr = ld_wr && ld_kind == 2'd1;
 
 wire [25:1] ld_sdr_addr;
 wire [15:0] ld_sdr_din;
-wire ld_sdr_req, dl, dl_wr, loading, cart_ready;
+wire ld_sdr_req, dl, dl_wr, loading, cart_ready, has_timer;
 wire [24:0] dl_addr;
 wire [15:0] dl_data;
 gb_loader loader (
@@ -285,14 +299,124 @@ gb_loader loader (
 	.file_active(file_active), .file_wr(file_wr), .file_addr(ld_addr), .file_data(ld_data),
 	.sdr_addr(ld_sdr_addr), .sdr_din(ld_sdr_din), .sdr_req(ld_sdr_req),
 	.dl(dl), .dl_wr(dl_wr), .dl_addr(dl_addr), .dl_data(dl_data),
-	.loading(loading), .cart_ready(cart_ready)
+	.loading(loading), .cart_ready(cart_ready), .has_timer(has_timer)
 );
 
-// reset: the PLLs, the Reset item, while a cartridge loads, until the first one is in
+// ------------------------------------------------------------------ save (.sav) and the MBC3 clock
+
+// the size of the .sav (as MiSTer Gameboy.sv): the cartridge RAM of a battery cartridge (sectors =
+// ram_mask_file + 1; MBC7 / TAMA5 keep theirs in block RAM: not saved here), then one RTC sector for
+// MBC3 + TIMER. kg_bk_ram on img slot 0: started when a cartridge is in (loading falls); the machine
+// is held in reset until the file is in. A new file resets it (the firmware flushes the old one
+// before it loads another game).
+wire [7:0] ram_mask_file;
+wire has_save, bram_save;
+reg [8:0] ram_secs = 9'd0;
+reg [9:0] sav_secs = 10'd0;
+always @(posedge clk_sys) begin
+	ram_secs <= has_save && !bram_save ? { 1'b0, ram_mask_file } + 9'd1 : 9'd0;
+	sav_secs <= { 1'b0, ram_secs } + { 9'd0, has_timer };
+end
+
+reg file_active_d = 1'b0, loading_d = 1'b0, bk_reset = 1'b0, bk_start = 1'b0;
+always @(posedge clk_sys) begin
+	file_active_d <= file_active;
+	loading_d <= loading;
+	bk_reset <= file_active && !file_active_d;
+	bk_start <= loading_d && !loading;
+end
+
+// dirty marks: a cartridge RAM write (the rising edge of cram_wr) marks its sector, and the RTC
+// sector a clock later (the game set its clock, or saves: the pair time / registers goes with it)
+wire mem_rd, mem_wr, mem_cram;
+wire [16:0] mem_cram_addr;
+reg cw_d = 1'b0, rtc_mark = 1'b0;
+reg sav_wr = 1'b0;
+reg [17:0] sav_a = 18'd0;
+always @(posedge clk_sys) begin
+	cw_d <= mem_wr & mem_cram;
+	sav_wr <= 1'b0;
+	rtc_mark <= 1'b0;
+	if (mem_wr && mem_cram && !cw_d) begin
+		sav_wr <= mem_cram_addr[16:9] < ram_secs;
+		sav_a <= { 1'b0, mem_cram_addr };
+		rtc_mark <= has_timer;
+	end
+	else if (rtc_mark) begin
+		sav_wr <= 1'b1;
+		sav_a <= { ram_secs, 9'd0 };
+	end
+end
+
+wire bk_busy, bk_mem_req, bk_mem_we, bk_mem_ack;
+wire [17:0] bk_mem_addr;
+wire [7:0] bk_mem_din, bk_mem_dout;
+kg_bk_ram #(
+	.SLOT(3'd0),
+	.IDLE_CLOCKS(27'd33571000),    // ~1 s at 33.571 MHz: save after the last write
+	.MAX_CLOCKS(27'd67142000),     // ~2 s: at the latest after the first write
+	.MOUNT_CLOCKS(27'd33571000),   // ~1 s: no answer to the mount, go on without a save
+	.GRACE_CLOCKS(27'd335710),     // ~10 ms: no file
+	.LINK(2),                      // on the mounter of kg_mcu2
+	.SBITS(9)                      // up to 128 KB + the RTC sector
+) bk_ram (
+	.clk(clk_sys),
+	.reset(bk_reset),
+	.start(bk_start),
+	.size(sav_secs),
+	.kind(8'h00),
+	.busy(bk_busy),
+	.mounted(),
+	.saving(),
+	.save_error(),
+	.wr(sav_wr),
+	.wr_addr(sav_a),
+	.mem_req(bk_mem_req),
+	.mem_we(bk_mem_we),
+	.mem_addr(bk_mem_addr),
+	.mem_din(bk_mem_din),
+	.mem_ack(bk_mem_ack),
+	.mem_dout(bk_mem_dout),
+	.img_mounted(8'd0), .img_size(64'd0), .img_data_wr(1'b0), .img_data_addr(9'd0), .img_data(8'd0),
+	.img_result_wr(1'b0), .img_result(8'd0), .img_sum(16'd0), .img_flush(img_flush),
+	.img_q_wr(), .img_q_di(), .img_q_ack(1'b0),
+	.sdc_img_mounted_i(sdc_img_mounted), .sdc_img_size_i(sdc_img_size), .sdc_rd_o(sdc_rd),
+	.sdc_wr_o(sdc_wr), .sdc_sector_o(sdc_sector), .sdc_busy_i(sdc_busy), .sdc_done_i(sdc_done),
+	.sdc_error_i(sdc_error), .sdc_slot_i(sdc_slot), .sdc_byte_in_strobe_i(sdc_byte_in_strobe),
+	.sdc_byte_addr_i(sdc_byte_addr), .sdc_byte_in_data_i(sdc_byte_in_data),
+	.sdc_byte_out_data_o(sdc_byte_out_data),
+	.bk_mount(bk_mount), .bk_flushed(bk_flushed), .bk_size(bk_size), .bk_kind(bk_kind),
+	.bk_result(bk_result)
+);
+
+wire [31:0] rtc_timestamp;
+wire [47:0] rtc_savedtime;
+wire bk_rtc_wr;
+wire [16:0] bk_addr;
+wire [15:0] bk_data;
+wire [25:1] bk_sdr_addr;
+wire [15:0] bk_sdr_din, bk_sdr_dout;
+wire bk_sdr_req, bk_sdr_rnw, bk_sdr_ready;
+gb_bk bk (
+	.clk(clk_sys), .clk_ram(clk_ram), .ram_secs(ram_secs),
+	.mem_req(bk_mem_req), .mem_we(bk_mem_we), .mem_addr(bk_mem_addr), .mem_din(bk_mem_din),
+	.mem_ack(bk_mem_ack), .mem_dout(bk_mem_dout),
+	.rtc_timestamp(rtc_timestamp), .rtc_savedtime(rtc_savedtime),
+	.bk_rtc_wr(bk_rtc_wr), .bk_addr(bk_addr), .bk_data(bk_data),
+	.sdr_addr(bk_sdr_addr), .sdr_din(bk_sdr_din), .sdr_req(bk_sdr_req), .sdr_rnw(bk_sdr_rnw),
+	.sdr_dout(bk_sdr_dout), .sdr_ready(bk_sdr_ready)
+);
+
+// the time of the firmware RTC (core.json rtc_mode 2) as Unix seconds for the MBC3 clock
+wire [32:0] rtc_time;
+gb_rtc rtc (.clk(clk_sys), .rtc_a(rtc_a), .rtc_do(rtc_do), .rtc_time(rtc_time), .valid());
+
+// reset: the PLLs, the Reset item, while a cartridge loads, until the first one is in, while the
+// .sav file loads
 reg [7:0] rst_cnt = 8'd0;
 reg gb_reset = 1'b1;
 always @(posedge clk_sys) begin
-	if (areset || sw_reset || loading || !cart_ready)
+	if (areset || sw_reset || loading || !cart_ready || bk_busy)
 		rst_cnt <= 8'd0;
 	else if (rst_cnt != 8'hFF)
 		rst_cnt <= rst_cnt + 8'd1;
@@ -312,9 +436,7 @@ gb_kbd kbd (
 
 // ------------------------------------------------------------------ Game Boy
 
-wire mem_rd, mem_wr, mem_cram;
 wire [22:0] mem_addr;
-wire [16:0] mem_cram_addr;
 wire [7:0] mem_din, mem_q;
 wire lcd_ce, lcd_clkena, lcd_on, lcd_vsync, is_gbc;
 wire [14:0] lcd_data;
@@ -330,7 +452,9 @@ gb_machine gb (
 	.dl(dl), .dl_wr(dl_wr), .dl_addr(dl_addr), .dl_data(dl_data), .dl_wait(),
 	.mem_rd(mem_rd), .mem_wr(mem_wr), .mem_cram(mem_cram), .mem_addr(mem_addr),
 	.mem_cram_addr(mem_cram_addr), .mem_din(mem_din), .mem_q(mem_q),
-	.rtc_time(33'd0),
+	.ram_mask_file(ram_mask_file), .has_save(has_save), .bram_save(bram_save),
+	.rtc_time(rtc_time), .bk_rtc_wr(bk_rtc_wr), .bk_addr(bk_addr), .bk_data(bk_data),
+	.rtc_timestamp(rtc_timestamp), .rtc_savedtime(rtc_savedtime),
 	.lcd_ce(lcd_ce), .lcd_clkena(lcd_clkena), .lcd_data(lcd_data), .lcd_data_gb(lcd_data_gb),
 	.lcd_mode(), .lcd_on(lcd_on), .lcd_vsync(lcd_vsync), .is_gbc(is_gbc),
 	.audio_l(snd_l), .audio_r(snd_r),
@@ -367,7 +491,7 @@ gb_sdram sdram (
 	.SDRAM_nCAS(SDR_CAS_N),
 
 	.ch1_addr(ld_sdr_addr), .ch1_dout(), .ch1_din(ld_sdr_din), .ch1_req(ld_sdr_req), .ch1_rnw(1'b0), .ch1_ready(),
-	.ch2_addr(25'd0), .ch2_dout(), .ch2_din(16'd0), .ch2_req(1'b0), .ch2_rnw(1'b1), .ch2_ready(),
+	.ch2_addr(bk_sdr_addr), .ch2_dout(bk_sdr_dout), .ch2_din(bk_sdr_din), .ch2_req(bk_sdr_req), .ch2_rnw(bk_sdr_rnw), .ch2_ready(bk_sdr_ready),
 	.ch3_addr(m_sdr_addr), .ch3_dout(m_sdr_dout), .ch3_din(m_sdr_din), .ch3_be(m_sdr_be),
 	.ch3_req(m_sdr_req), .ch3_rnw(m_sdr_rnw), .ch3_ready(m_sdr_ready)
 );
