@@ -11,10 +11,14 @@
 
  blend (taken at the start of an output frame): 0 the last frame; 1 the mean of the last two (the
  LCD ghosting some games count on for transparency, "frame blend" of MiSTer).
+ palette (GB): the four shades as 0 grey, 1 green (DMG), 2 Pocket, 3 light green (BGB);
+ cc (GBC): 1 = the LCD colour correction of Gambatte (R = (13 r + 2 g + b) / 2, G = (3 g + b) * 2,
+ B = (3 r + 2 g + 11 b) / 2 of the 5-bit channels, to 8 bits), 0 = the raw BGR555.
+ Both are applied to the pixel when it is written (a change shows from the next frame).
 
  Write side (clk = clk_sys): a pixel is lcd_ce & lcd_clkena (as lcd.v of MiSTer) while the LCD is on,
- in raster order from lcd_vsync; GBC: lcd_data BGR555, GB: lcd_data_gb shade 0..3 (white .. black,
- grey for now). One SRAM word each (RGB555) at { buffer (3 bits), y * 160 + x (15) }; pixel 23039
+ in raster order from lcd_vsync; GBC: lcd_data BGR555, GB: lcd_data_gb shade 0..3 (light .. dark)
+ through the palette. One SRAM word each (RGB555) at { buffer (3 bits), y * 160 + x (15) }; pixel 23039
  ends a frame: that buffer becomes the last complete one, the writer takes the next of the ring. In
  one output frame the writer completes at most one frame, so it never reaches the two shown. A pixel
  comes every 8 clocks at most.
@@ -44,6 +48,8 @@ module gb_fb (
 	input  wire        lcd_vsync,
 	input  wire        is_gbc,
 	input  wire        blend,
+	input  wire [1:0]  palette,
+	input  wire        cc,
 
 	output reg  [20:0] MA = 21'd0,
 	inout  wire [15:0] MD,
@@ -68,9 +74,26 @@ reg        vs_d = 1'b0;
 reg [14:0] pix_a = 15'd0;              // y * 160 + x
 
 // the colour of a pixel: RGB555
-wire [4:0] shade = lcd_data_gb == 2'd0 ? 5'd31 : lcd_data_gb == 2'd1 ? 5'd21 :
-                   lcd_data_gb == 2'd2 ? 5'd10 : 5'd0;
-wire [14:0] pix_rgb = is_gbc ? { lcd_data[4:0], lcd_data[9:5], lcd_data[14:10] } : { shade, shade, shade };
+function [14:0] pal;            // palette p, shade n: RGB555 of the RGB888 values
+	input [1:0] p;
+	input [1:0] n;
+	reg [23:0] c;
+	begin
+		case ({ p, n })
+			4'h0: c = 24'hFFFFFF; 4'h1: c = 24'hAAAAAA; 4'h2: c = 24'h555555; 4'h3: c = 24'h000000;
+			4'h4: c = 24'h9BBC0F; 4'h5: c = 24'h8BAC0F; 4'h6: c = 24'h306230; 4'h7: c = 24'h0F380F;
+			4'h8: c = 24'hC4CFA1; 4'h9: c = 24'h8B956D; 4'hA: c = 24'h4D533C; 4'hB: c = 24'h1F1F1F;
+			4'hC: c = 24'hE0F8D0; 4'hD: c = 24'h88C070; 4'hE: c = 24'h346856; default: c = 24'h081820;
+		endcase
+		pal = { c[23:19], c[15:11], c[7:3] };
+	end
+endfunction
+wire [4:0] c_r = lcd_data[4:0], c_g = lcd_data[9:5], c_b = lcd_data[14:10];
+wire [8:0] cc_r = ({ 4'd0, c_r } * 9'd13 + { 4'd0, c_g } * 9'd2 + { 4'd0, c_b }) >> 1;
+wire [8:0] cc_g = ({ 4'd0, c_g } * 9'd3 + { 4'd0, c_b }) << 1;
+wire [8:0] cc_b = ({ 4'd0, c_r } * 9'd3 + { 4'd0, c_g } * 9'd2 + { 4'd0, c_b } * 9'd11) >> 1;
+wire [14:0] gbc_rgb = cc ? { cc_r[7:3], cc_g[7:3], cc_b[7:3] } : { c_r, c_g, c_b };
+wire [14:0] pix_rgb = is_gbc ? gbc_rgb : pal(palette, lcd_data_gb);
 
 // line requests from clk_vid (the toggle and the line / buffer / mode it asks for)
 wire       req_t_v;

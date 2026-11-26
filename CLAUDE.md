@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Nintendo Game Boy / Game Boy Color core for the Karabas Go, Mini and Mini G boards: Xilinx Spartan-6 XC6SLX25, ISE 14.7 (XST).
 
-Status: Ф0-Ф2 merged into local master 2026-11-26: Mini G build 26112602 hw ok (acid2 tests, µCity, keys, pad, HDMI audio, .sav + MBC3 clock), 800 x 600 x4; Ф3 (options, Go / Mini, release) next. Checks: `src/sim/run.sh` (~3 min), `src/sim/run_bk.sh` (saves, ~10 s). Machine alone: `cd src && make gb-xst`; after an RTL change run `src/tools/sv2v.sh`. Docs, in Russian: `docs/PLAN.md` (research, decisions, architecture, phases), `docs/BACKLOG.md`. Follow the phases; record a changed decision in PLAN.md.
+Status: Ф0-Ф3 done 2026-11-26, build 26112603 for Go / Mini / Mini G (Mini G hw ok; Go / Mini never on a board); public repo github.com/andykarpov/karabas-go-core-gameboy, released through karabas-go cores.json. Checks: `src/sim/run.sh` (~3 min), `src/sim/run_bk.sh` (saves, ~10 s). Machine alone: `cd src && make gb-xst`; after an RTL change run `src/tools/sv2v.sh`. Docs, in Russian: `docs/PLAN.md` (research, decisions, architecture, phases), `docs/BACKLOG.md`. Follow the phases; record a changed decision in PLAN.md.
 
 Base: the MiSTer Gameboy core as it is in [LakoMoor/open-pocket-gbc](https://github.com/LakoMoor/open-pocket-gbc) `rtl/gb` (GPL-3.0; = MiSTer-devel/Gameboy_MiSTer rtl with the gated clocks removed, the mappers' tri-state buses as wired-OR, the cheat engine left out) plus its `rtl/gb_port` stubs (savestates, cheats). The MiSTer repo itself is the reference (and the source of the SameBoy-based boot ROMs, MIT). Get both with `tools/fetch_upstream.sh` (git-ignored, pinned). Keep the upstream headers; mark changed lines `// karabas:`. The core is GPL v3 (`LICENSE`).
 
@@ -21,7 +21,8 @@ The rules of the other karabas-go cores apply: one clock with enables (no gated 
 - No game ROMs in the repo or the `.kg`; free test ROMs (dmg-acid2 / cgb-acid2, homebrew) only under `src/sim/tests` if their licence allows.
 - `karabas-go-modules` is shared with other sessions: change it only in a git worktree, PR there, then move the submodule.
 - Before a step that needs the board or the HDMI capture, tell the user; capture frames only after a yes; ask before a firmware flash.
-- One branch per phase of `docs/PLAN.md`, one PR at its end (local master until the repo is public).
+- One branch per phase of `docs/PLAN.md`, one PR at its end (the repo is public since 2026-11-26).
+- The base set of every board top: audio peaks to the MCU (`audio_peaks`, MATRIX_CMD), the ADC (PCM1808) in the mix, FT_CLK_OUT, MIDI_TX (idle here); no tape on a Game Boy. Go / Mini files: edit the Mini G top, then `src/tools/mktops.py`.
 - Heavy builds: Mini G only while working on one feature, all boards for a release; map with cost table 2 first.
 
 ## Memory

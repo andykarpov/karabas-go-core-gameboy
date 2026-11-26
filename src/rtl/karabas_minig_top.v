@@ -22,8 +22,14 @@
  file loader of kg_mcu2 into the SDRAM and, as the MiSTer ioctl download, to cart_top (gb_loader.v);
  the machine is held in reset until a cartridge is in.
 
+ Sound: the gb audio (MiSTer gbc_snd: a DC offset of ~ +1800, peaks ~ 4000) through a DC blocker,
+ x 4, + the ADC (PCM1808: the line in and the MIDI synth SAM2695 of the board, half scale) ->
+ PCM5102, HDMI; the peaks of the mix to the mcu (audio_peaks: the level meters). The base set of
+ the board otherwise: FT_CLK_OUT 8 MHz, MIDI_TX idle (no MIDI), TAPE_OUT 0 (no tape on a Game Boy).
+
  Soft switches (core.json osd order):
-   0 Model (Auto / GBC / GB)   1 Boot (Logo / Fast)   2 Frame blend (Off / On)   3 Reset
+   0 Model (Auto / GBC / GB)   1 GB palette (Grey / Green / Pocket / Light)   2 GBC colours (LCD / Raw)
+   3 Frame blend (Off / On)   4 Boot (Logo / Fast)   5 Reset
 */
 
 module karabas_minig_top (
@@ -127,9 +133,6 @@ assign UART_TX = 1'bz;
 assign UART_CTS = 1'bz;
 assign MIDI_TX = 1'b1;
 
-assign ADC_CLK = 1'b0;
-assign ADC_BCK = 1'bz;
-assign ADC_LRCK = 1'bz;
 
 // FLASH_CS_N (T3) is the SDRAM /CS of Mini G2 (rev G: tied low on the board): 0
 assign FLASH_CS_N = 1'b0;
@@ -192,6 +195,9 @@ wire [8:0] sdc_byte_addr;
 
 wire [7:0] rtc_a, rtc_do;
 
+wire matrix_cmd_wr;
+wire [23:0] matrix_cmd;
+
 wire [55:0] hid_kbd;
 wire [15:0] joy_l16, joy_r16;
 wire [1:0] ld_kind;
@@ -200,7 +206,7 @@ wire [31:0] ld_addr;
 wire ld_active, ld_wr;
 wire dvi_only;
 wire ft_cs_n, ft_mosi, ft_spi_on, sd2_cs_n, sd2_mosi;
-wire [4*8-1:0] sw;
+wire [6*8-1:0] sw;
 wire osd_wr, osd_en, osd_zoom;
 wire [11:0] osd_waddr;
 wire [7:0] osd_wdata;
@@ -213,13 +219,13 @@ wire [5:0] osd_pw;
 
 kg_mcu2 #(
 	.CAPS(16'h0002),     // backup RAM: the firmware flushes the .sav before a new game
-	.SW_N(4),
+	.SW_N(6),
 	.CS_FILTER(3),
 	.ENABLE_OSD(1),
 	.ENABLE_IMG(1),      // the .sav file of kg_bk_ram
 	.IMG_OUT_LATENCY(2), // the sector buffer of kg_bk_ram
 	.ENABLE_RTC(1),      // the firmware clock for the MBC3 RTC
-	.ENABLE_AUX(0),
+	.ENABLE_AUX(1),      // MATRIX_CMD: the audio peaks
 	.ENABLE_FT(1),
 	.ENABLE_SD2(1)
 ) mcu (
@@ -263,7 +269,7 @@ kg_mcu2 #(
 	.PORT_OUT_DATA(), .PORT_OUT_WR(), .PORT_OUT_READY(4'b1111), .PORT_IN_DATA(32'd0), .PORT_IN_WR(4'd0),
 	.PORT_CFG(128'd0), .PORT_IN_FULL(), .PORT_STAT(), .PORT_STAT_WR(),
 	.RTC_A(rtc_a), .RTC_DI(8'd0), .RTC_CS(1'b0), .RTC_WR_N(1'b1), .RTC_DO(rtc_do),
-	.MATRIX_CMD(24'd0), .MATRIX_CMD_WR(1'b0), .DEBUG_ADDR(16'd0), .DEBUG_DATA(16'd0),
+	.MATRIX_CMD(matrix_cmd), .MATRIX_CMD_WR(matrix_cmd_wr), .DEBUG_ADDR(16'd0), .DEBUG_DATA(16'd0),
 
 	.FT_SPI_ON(ft_spi_on), .FT_VGA_ON(), .FT_RESET(), .FT_SCK(), .FT_MOSI(ft_mosi), .FT_MISO(FT_SPI_MISO),
 	.FT_CS_N(ft_cs_n),
@@ -280,9 +286,11 @@ assign SD_CLK = mcu_sck_ibufg;
 // ------------------------------------------------------------------ soft switches (the SW registers of kg_mcu2)
 
 wire [1:0] sw_model = sw[0*8 +: 2];   // 0 Auto, 1 GBC, 2 GB (gb_machine model)
-wire sw_fast = sw[1*8];               // 0 the boot logo, 1 fast boot
-wire sw_blend = sw[2*8];              // 0 Off, 1 two frames mixed
-wire sw_reset = sw[3*8];
+wire [1:0] sw_pal = sw[1*8 +: 2];     // GB palette: 0 Grey, 1 Green, 2 Pocket, 3 Light
+wire sw_raw = sw[2*8];                // GBC colours: 0 LCD (colour correction), 1 Raw
+wire sw_blend = sw[3*8];              // 0 Off, 1 two frames mixed
+wire sw_fast = sw[4*8];               // 0 the boot logo, 1 fast boot
+wire sw_reset = sw[5*8];
 
 // ------------------------------------------------------------------ cartridge
 
@@ -505,7 +513,7 @@ wire vid_hs, vid_vs, vid_de;
 gb_fb fb (
 	.clk(clk_sys),
 	.lcd_ce(lcd_ce), .lcd_clkena(lcd_clkena), .lcd_data(lcd_data), .lcd_data_gb(lcd_data_gb),
-	.lcd_on(lcd_on), .lcd_vsync(lcd_vsync), .is_gbc(is_gbc), .blend(sw_blend),
+	.lcd_on(lcd_on), .lcd_vsync(lcd_vsync), .is_gbc(is_gbc), .blend(sw_blend), .palette(sw_pal), .cc(~sw_raw),
 	.MA(MA), .MD(MD), .MWR_N(MWR_N), .MRD_N(MRD_N),
 	.clk_vid(clk_vid), .rgb(vid_rgb), .hs(vid_hs), .vs(vid_vs), .de(vid_de)
 );
@@ -526,20 +534,59 @@ kg_l2_osd_overlay osd (
 
 // ------------------------------------------------------------------ audio
 
-// the gb audio (signed 16 bits, clk_sys; MiSTer AUDIO_S = 1) at 48 kHz: 33.571 MHz / 699 = 48.03 kHz
+// the gb audio (signed 16 bits, clk_sys; MiSTer AUDIO_S = 1) at 48 kHz: 33.571 MHz / 699 = 48.03 kHz;
+// a DC blocker per channel (y = x - x' + y' - y' / 1024: -3 dB at ~7 Hz) on those samples, then x 4
 reg [9:0] aud_div = 10'd0;
-reg [15:0] aud_l = 16'd0, aud_r = 16'd0;
-reg aud_t = 1'b0;
+reg aud_t = 1'b0, aud_new = 1'b0;
+reg signed [15:0] gb_xl = 16'sd0, gb_xr = 16'sd0;     // the input sample before
+reg signed [23:0] gb_yl = 24'sd0, gb_yr = 24'sd0;     // the output, 8 fraction bits
 always @(posedge clk_sys) begin
+	aud_new <= 1'b0;
 	if (aud_div == 10'd698) begin
 		aud_div <= 10'd0;
-		aud_l <= snd_l;
-		aud_r <= snd_r;
-		aud_t <= ~aud_t;
+		aud_new <= 1'b1;
+		gb_xl <= snd_l;
+		gb_xr <= snd_r;
+		gb_yl <= gb_yl - (gb_yl >>> 10) + $signed({ snd_l, 8'd0 }) - $signed({ gb_xl, 8'd0 });
+		gb_yr <= gb_yr - (gb_yr >>> 10) + $signed({ snd_r, 8'd0 }) - $signed({ gb_xr, 8'd0 });
 	end
 	else
 		aud_div <= aud_div + 10'd1;
 end
+
+// the ADC (PCM1808: the line in and the MIDI synth SAM2695 of the board; as core-ocean240): i2s_transceiver is
+// the master, SCKI = ADC_CLK = clk_sys 33.571 MHz, BCK = clk_sys / 8, LRCK = BCK / 64 (65.6 kHz, SCKI = 512 fs),
+// 24 bits; half of the scale into the mix
+wire [23:0] adc_l, adc_r;
+i2s_transceiver #(.mclk_sclk_ratio(8), .sclk_ws_ratio(64), .d_width(24)) adc (
+	.reset_n(~areset),
+	.mclk(clk_sys),
+	.sclk(ADC_BCK),
+	.ws(ADC_LRCK),
+	.sd_tx(),
+	.sd_rx(ADC_DOUT),
+	.l_data_tx(24'b0),
+	.r_data_tx(24'b0),
+	.l_data_rx(adc_l),
+	.r_data_rx(adc_r)
+);
+ODDR2 oddr_adc (.Q(ADC_CLK), .C0(clk_sys), .C1(~clk_sys), .CE(1'b1), .D0(1'b1), .D1(1'b0), .R(1'b0), .S(1'b0));
+
+// the final mix, saturated to 16 bits: the gb x 4 (y >> 8 << 2 = y >> 6) + the ADC / 2
+function [15:0] sat16(input [19:0] v);
+	sat16 = (v[19:15] == 5'b00000 || v[19:15] == 5'b11111) ? v[15:0] : v[19] ? 16'h8000 : 16'h7FFF;
+endfunction
+wire [19:0] mix_l = { {2{gb_yl[23]}}, gb_yl[23:6] } + { {5{adc_l[23]}}, adc_l[23:9] };
+wire [19:0] mix_r = { {2{gb_yr[23]}}, gb_yr[23:6] } + { {5{adc_r[23]}}, adc_r[23:9] };
+reg [15:0] aud_l = 16'd0, aud_r = 16'd0;
+always @(posedge clk_sys) begin
+	aud_l <= sat16(mix_l);
+	aud_r <= sat16(mix_r);
+	if (aud_new) aud_t <= ~aud_t;
+end
+
+// the level meters of the mcu: the peaks of the final mix (CMD_AUDIO_PEAKS_L / _R)
+audio_peaks #(.PERIOD_BITS(19)) peaks (.clk(clk_sys), .audio_l(aud_l), .audio_r(aud_r), .cmd_wr(matrix_cmd_wr), .cmd(matrix_cmd));
 
 kg_pcm5102 #(.DIV_BITS(2)) dac (
 	.clk(clk_sys),
@@ -551,7 +598,8 @@ kg_pcm5102 #(.DIV_BITS(2)) dac (
 	.lrck(DAC_WS)
 );
 
-// into clk_vid for HDMI: the toggle of a new sample (the samples hold for 699 clk_sys)
+// into clk_vid for HDMI: the toggle of a new sample (aud_l / aud_r: the ADC changes them in between,
+// taken a few clocks after the toggle: a sample of the mix)
 reg [2:0] aud_ts = 3'd0;
 reg aud_stb = 1'b0;
 reg [23:0] hdmi_l = 24'd0, hdmi_r = 24'd0;

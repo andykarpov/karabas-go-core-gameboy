@@ -19,7 +19,7 @@ XIL = source $(ISE_SETTINGS) > /dev/null;
 prj_src = $(shell sed -n 's/^[a-z]* work "\(.*\)"/\1/p' $(1) 2>/dev/null)
 
 PART = xc6slx25-ftg256-2
-BOARDS = minig
+BOARDS = minig go mini
 KG = gameboy.kg
 JSON = core.json
 

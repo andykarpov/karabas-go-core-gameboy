@@ -1,7 +1,7 @@
 {
     "id": "gameboy",
     "name": "Game Boy",
-    "build": "26112602",
+    "build": "26112603",
     "visible": true,
     "type": "fileloader",
     "dir": "gameboy",
@@ -12,12 +12,16 @@
     "rtc_mode": 2,
     "roms": [],
     "boards": {
-        "minig": {"link": 2, "build": "26112602", "bitstream": "karabas_minig.bin"}
+        "go": {"link": 2, "build": "26112603", "bitstream": "karabas_go.bin"},
+        "mini": {"link": 2, "build": "26112603", "bitstream": "karabas_mini.bin"},
+        "minig": {"link": 2, "build": "26112603", "bitstream": "karabas_minig.bin"}
     },
     "osd": [
     {"type": "S", "name": "Model", "options": ["Auto", "GBC", "GB"], "default": 0, "hotkey": "Menu+M"},
-    {"type": "S", "name": "Boot", "options": ["Logo", "Fast"], "default": 0},
+    {"type": "S", "name": "GB palette", "options": ["Grey", "Green", "Pocket", "Light"], "default": 1, "hotkey": "Menu+P"},
+    {"type": "S", "name": "GBC colours", "options": ["LCD", "Raw"], "default": 0},
     {"type": "S", "name": "Frame blend", "options": ["Off", "On"], "default": 0},
+    {"type": "S", "name": "Boot", "options": ["Logo", "Fast"], "default": 0},
     {"type": "T", "name": "Reset", "hotkey": "F12"}
     ]
 }
