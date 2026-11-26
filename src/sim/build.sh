@@ -1,8 +1,10 @@
 #!/bin/bash
-# Builds the verilator model of gb_machine: the VHDL (GBse / T80, gbc_snd) through
-# ghdl --synth --out=verilog, the Verilog of rtl/gbv/gb_machine_sv2v.v (tools/sv2v.sh) and the
-# harness sim_gb.cpp. Output in src/sim/build/ (obj/Vgb_machine). Rebuilds only when a source is
-# newer. Run the model from src: the boot ROM is read from rtl/gb_port/boot_rom.hex.
+# Builds the verilator models: the VHDL (GBse / T80, gbc_snd) through ghdl --synth --out=verilog,
+# the Verilog of rtl/gbv/gb_machine_sv2v.v (tools/sv2v.sh), and
+#   obj/Vgb_machine     gb_machine alone, the cartridge memory in the harness sim_gb.cpp
+#   obj_sys/Vsim_top    the board path sim_top.v (gb_loader, gb_mem, gb_sdram, sdram_model), sim_sys.cpp
+# Output in src/sim/build/. Rebuilds only when a source is newer. Run the models from src: the boot
+# ROM is read from rtl/gb_port/boot_rom.hex.
 set -e
 cd "$(dirname "$0")"
 SRC=..
@@ -24,16 +26,21 @@ for u in GBse gbc_snd; do
 	fi
 done
 
-OWN="rtl/gbv/gb_machine_sv2v.v"
-EXE=$B/obj/Vgb_machine
-if newer $EXE "$OWN sim/$B/GBse_ghdl.v sim/$B/gbc_snd_ghdl.v sim/sim_gb.cpp sim/build.sh"; then
-	echo "JOB-STAGE: verilator"
-	(cd $SRC && verilator -O3 --x-assign fast --x-initial fast --default-language 1364-2005 \
-		-Wno-fatal -Wno-lint -Wno-style -Wno-BLKANDNBLK -Wno-MULTIDRIVEN -Wno-UNOPTFLAT -Wno-WIDTH \
-		-Wno-CASEINCOMPLETE --no-timing --top-module gb_machine -Mdir sim/$B/obj --cc \
-		sim/$B/GBse_ghdl.v sim/$B/gbc_snd_ghdl.v $OWN \
-		--exe $HERE/sim_gb.cpp -o Vgb_machine > sim/$B/verilator.log 2>&1) || { grep -E '%Error' $B/verilator.log | head -20; exit 1; }
-	echo "JOB-STAGE: c++"
-	make -s -j8 -C $B/obj -f Vgb_machine.mk OPT_FAST=-O2 > $B/make.log 2>&1 || { tail -30 $B/make.log; exit 1; }
-fi
+model() { # obj top harness sources...
+	local OBJ=$1 TOP=$2 CPP=$3; shift 3
+	local EXE=$B/$OBJ/V$TOP
+	if newer $EXE "$* sim/$B/GBse_ghdl.v sim/$B/gbc_snd_ghdl.v sim/$CPP sim/build.sh"; then
+		echo "JOB-STAGE: verilator $TOP"
+		(cd $SRC && verilator -O3 --x-assign fast --x-initial fast --default-language 1364-2005 \
+			-Wno-fatal -Wno-lint -Wno-style -Wno-BLKANDNBLK -Wno-MULTIDRIVEN -Wno-UNOPTFLAT -Wno-WIDTH \
+			-Wno-CASEINCOMPLETE --no-timing --top-module $TOP -Mdir sim/$B/$OBJ --cc \
+			sim/$B/GBse_ghdl.v sim/$B/gbc_snd_ghdl.v "$@" \
+			--exe $HERE/$CPP -o V$TOP > sim/$B/verilator_$OBJ.log 2>&1) || { grep -E '%Error' $B/verilator_$OBJ.log | head -20; exit 1; }
+		echo "JOB-STAGE: c++ $TOP"
+		make -s -j8 -C $B/$OBJ -f V$TOP.mk OPT_FAST=-O2 > $B/make_$OBJ.log 2>&1 || { tail -30 $B/make_$OBJ.log; exit 1; }
+	fi
+}
+model obj gb_machine sim_gb.cpp rtl/gbv/gb_machine_sv2v.v
+model obj_sys sim_top sim_sys.cpp rtl/gbv/gb_machine_sv2v.v rtl/karabas/gb_loader.v rtl/karabas/gb_mem.v \
+	rtl/karabas/gb_sdram.v sim/sdram_model.v sim/sim_top.v
 echo "model ok"
