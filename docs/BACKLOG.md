@@ -1,0 +1,9 @@
+# Беклог ядра Game Boy
+
+- Super Game Boy (рамки, палитры SGB) — `sgb.v` MiSTer.
+- Link cable (между двумя платами / через UART).
+- Savestates, rewind, ускорение.
+- Читы Game Genie / GameShark (`cheatcodes.sv`).
+- Камера Game Boy, MegaDuck, редкие мапперы (если вырезаны в Ф0 по размеру).
+- Режим 640 × 480 ×3 (если 800 × 600 не подойдёт какому-то монитору).
+- Физический картридж (у open-pocket-gbc есть считыватель на сдвиговых регистрах).
