@@ -1,7 +1,7 @@
 {
     "id": "gameboy",
     "name": "Game Boy",
-    "build": "26112601",
+    "build": "26112602",
     "visible": true,
     "type": "fileloader",
     "dir": "gameboy",
@@ -9,10 +9,10 @@
     "extensions": ".gb,.gbc",
     "order": 60,
     "eeprom_bank": 255,
-    "rtc_mode": 0,
+    "rtc_mode": 2,
     "roms": [],
     "boards": {
-        "minig": {"link": 2, "build": "26112601", "bitstream": "karabas_minig.bin"}
+        "minig": {"link": 2, "build": "26112602", "bitstream": "karabas_minig.bin"}
     },
     "osd": [
     {"type": "S", "name": "Model", "options": ["Auto", "GBC", "GB"], "default": 0, "hotkey": "Menu+M"},

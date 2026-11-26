@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 MACHINE=$(for f in bus_savestates reg_savestates T80/T80_Pack T80/T80_ALU T80/T80_MCode T80/T80_Reg T80/T80 \
 	T80/GBse gbc_snd; do echo "vhdl work \"rtl/gb/$f.vhd\""; done; echo 'verilog work "rtl/gbv/gb_machine_sv2v.v"')
 echo "$MACHINE" > measure/gb.prj
-GLUE="gb_clocks gb_sdram gb_loader gb_mem gb_kbd gb_fb"
+GLUE="gb_clocks gb_sdram gb_loader gb_mem gb_kbd gb_fb gb_bk gb_rtc"
 for b in minig go mini; do
 	{ echo "$MACHINE"
 	  for g in $GLUE; do echo "verilog work \"rtl/karabas/$g.v\""; done

@@ -6991,7 +6991,15 @@ module gb_machine (
 	mem_cram_addr,
 	mem_din,
 	mem_q,
+	ram_mask_file,
+	has_save,
+	bram_save,
 	rtc_time,
+	bk_rtc_wr,
+	bk_addr,
+	bk_data,
+	rtc_timestamp,
+	rtc_savedtime,
 	lcd_ce,
 	lcd_clkena,
 	lcd_data,
@@ -7021,7 +7029,15 @@ module gb_machine (
 	output wire [16:0] mem_cram_addr;
 	output wire [7:0] mem_din;
 	input [7:0] mem_q;
+	output wire [7:0] ram_mask_file;
+	output wire has_save;
+	output wire bram_save;
 	input [32:0] rtc_time;
+	input bk_rtc_wr;
+	input [16:0] bk_addr;
+	input [15:0] bk_data;
+	output wire [31:0] rtc_timestamp;
+	output wire [47:0] rtc_savedtime;
 	output wire lcd_ce;
 	output wire lcd_clkena;
 	output wire [14:0] lcd_data;
@@ -7183,10 +7199,10 @@ module gb_machine (
 		.cram_bram_wr(),
 		.cram_addr(mem_cram_addr),
 		.cart_download(dl),
-		.ram_mask_file(),
+		.ram_mask_file(ram_mask_file),
 		.ram_size(cart_ram_size),
-		.has_save(),
-		.bram_save(),
+		.has_save(has_save),
+		.bram_save(bram_save),
 		.isGBC_game(isGBC_game),
 		.isSGB_game(),
 		.ioctl_download(dl),
@@ -7195,17 +7211,17 @@ module gb_machine (
 		.ioctl_dout(dl_data),
 		.ioctl_wait(dl_wait),
 		.bk_wr(1'b0),
-		.bk_rtc_wr(1'b0),
-		.bk_addr(17'd0),
-		.bk_data(16'd0),
+		.bk_rtc_wr(bk_rtc_wr),
+		.bk_addr(bk_addr),
+		.bk_data(bk_data),
 		.bk_q(),
 		.img_size(64'd0),
 		.rom_di(mem_q),
 		.joystick_analog_0(16'd0),
 		.ce_32k(ce_32k),
 		.RTC_time(rtc_time),
-		.RTC_timestampOut(),
-		.RTC_savedtimeOut(),
+		.RTC_timestampOut(rtc_timestamp),
+		.RTC_savedtimeOut(rtc_savedtime),
 		.RTC_inuse(),
 		.SaveStateExt_Din(ss_ext_din),
 		.SaveStateExt_Adr(ss_ext_adr),
