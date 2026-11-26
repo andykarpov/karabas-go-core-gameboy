@@ -1,0 +1,23 @@
+{
+    "id": "gameboy",
+    "name": "Game Boy",
+    "build": "26112601",
+    "visible": true,
+    "type": "fileloader",
+    "dir": "gameboy",
+    "filename": "",
+    "extensions": ".gb,.gbc",
+    "order": 60,
+    "eeprom_bank": 255,
+    "rtc_mode": 0,
+    "roms": [],
+    "boards": {
+        "minig": {"link": 2, "build": "26112601", "bitstream": "karabas_minig.bin"}
+    },
+    "osd": [
+    {"type": "S", "name": "Model", "options": ["Auto", "GBC", "GB"], "default": 0, "hotkey": "Menu+M"},
+    {"type": "S", "name": "Boot", "options": ["Logo", "Fast"], "default": 0},
+    {"type": "S", "name": "Frame blend", "options": ["Off", "On"], "default": 0},
+    {"type": "T", "name": "Reset", "hotkey": "F12"}
+    ]
+}

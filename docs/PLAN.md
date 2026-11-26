@@ -46,7 +46,9 @@
 
 ### Ф1. Game Boy на Mini G
 - Верх Mini G (от wonderswan), клоки, `gb_sdram` + загрузка `F`, `gb_fb` 800 × 600, OSD, геймпад / клавиатура → кнопки GB, звук HDMI + ЦАП.
-- OSD: Model (Auto / GB / GBC), Reset. Проверка на плате (после «да» на захват).
+- OSD: Model (Auto / GBC / GB), Boot (Logo / Fast), Frame blend, Reset. Проверка на плате.
+
+**Итог Ф1 (2026-11-26):** `rtl/karabas/`: `gb_clocks` (DCM 50 × 47 / 70 → PLL: clk_sys 33,571 МГц, clk_ram 100,71, видео 40 / 200), `gb_sdram` (= `ws_sdram`), `gb_loader` (файл → SDRAM ch1 + MiSTer `ioctl` в cart_top), `gb_mem` (шина картриджа → ch3 по фронту `sdram_rd` / `cram_wr`, ОЗУ картриджа с 8 МБ, refresh вне циклов чтения), `gb_kbd`, `gb_fb` (кольцо 8 кадров в SRAM, 160 × 144 ×4 в 800 × 600 @ 60, смешение двух кадров). Симуляция: `sim/run_fb.sh` (iverilog, три режима попиксельно), `sim/sim_top.v` + `sim_sys.cpp` — путь платы (загрузчик → SDRAM-модель → машина): dmg-acid2 и cgb-acid2 = эталон, ошибок SDRAM 0. Сборка Mini G 26112601: 68 % LUT, 88 % слайсов, 29 RAMB16 + 4 RAMB8, тайминги сошлись (map -t 2). **На плате (26112601):** HDMI 800 × 600 принят захватом, OSD и файловый браузер (`/gameboy`), dmg-acid2 и cgb-acid2 — правильные картинки, µCity (MBC5, 128 КБ) — заставка и меню, клавиатура и геймпад, звук по HDMI есть (пик −19 дБ, постоянное смещение ≈ +1800 — DC-фильтр в Ф3).
 
 ### Ф2. Сейвы и часы
 - ОЗУ картриджа → `kg_bk_ram` (`.sav`), MBC3 RTC от RTC прошивки (как wonderswan).
