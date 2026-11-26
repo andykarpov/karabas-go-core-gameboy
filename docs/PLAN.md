@@ -15,12 +15,12 @@
 ## Решения (предложены 2026-11-26, пользователь сказал «поехали»; поменять — сказать)
 
 1. **Основа — `rtl/gb` из open-pocket-gbc** + его заглушки; MiSTer — эталон для сверки. Импорт с пометкой `// karabas:` и кредитом.
-2. **Клок:** 67,108864 МГц как у MiSTer (`ce` ÷16, точная скорость) или 33,554432 МГц (÷8, как open-pocket-gbc) — выбор в Ф0 по XST (Fmax машины). От 50 МГц: DCM_CLKGEN + PLL, как `ws_clocks`.
+2. **Клок 33,554432 МГц** (`ce` ÷8, как open-pocket-gbc; Ф0: Fmax машины в XST 57 МГц, 67 МГц не проходит). От 50 МГц: DCM_CLKGEN + PLL, как `ws_clocks`.
 3. **Видео: буфер кадра в SRAM**, вывод 800 × 600 @ 60 Гц, картинка ×4 = 640 × 576 по центру (кадр GB 59,73 Гц — тройной буфер, как `ws_fb`). Режимы 640 × 480 ×3 — в беклог, если понадобится.
 4. **Boot ROM:** открытые SameBoy-based из MiSTer (DMG + CGB, MIT) — в репо и `.kg`; быстрый старт (без анимации) — пункт OSD. Оригинальные Nintendo boot ROM не кладём.
 5. **Картридж:** ПЗУ до 8 МБ в SDRAM (OSD `F`, `.gb` / `.gbc`, каталог SD `/gameboy`), разбор заголовка ядром (как MiSTer `ioctl`). ОЗУ картриджа (до 128 КБ) — SDRAM / BRAM по Ф0, сейвы — `kg_bk_ram` в `<игра>.sav`.
 6. **Id ядра `gameboy`**, файл `gameboy.kg`. Сначала Mini G, Go и Mini — в фазе релиза. Репо локальное, публичное к первому релизу (спросить).
-7. Не берём: savestates, rewind, читы, link cable, SGB, камеру, MegaDuck — в беклог.
+7. Не берём: savestates, rewind, читы, link cable, SGB, MegaDuck — в беклог. Мапперы — все (Ф0: +914 LUT).
 
 ## Архитектура (черновик, уточняется в Ф0)
 
@@ -41,6 +41,8 @@
 - `src/rtl/gb/` из open-pocket-gbc (+ `gb_port`), `vhdl93.py` для VHDL (T80, APU), `sv2v` для `.sv`, лишние мапперы / модули — по размеру.
 - Verilator: boot ROM SameBoy доходит до картриджа, тестовые ROM (dmg-acid2 / cgb-acid2, homebrew) рисуют кадр → PNG, сверка с эталонной картинкой.
 - `make gb-xst`: LUT / FF / RAMB16 / Fmax машины при 67 и 33 МГц; решение по клоку.
+
+**Итог Ф0 (2026-11-26):** `src/rtl/gb/` + `gb_port/` из open-pocket-gbc, обёртка `rtl/karabas/gb_machine.v` (gb + cart_top + ce_gen, ПЗУ / ОЗУ картриджа снаружи, загрузка MiSTer `ioctl`), `tools/sv2v.sh` → `rtl/gbv/gb_machine_sv2v.v` (в git). Правки `karabas:` — порты RAM без значений по умолчанию (sv2v → XST «multi-source»), шина `sprites_extra_store` без tristate (OR), метка ALU в T80 (`ghdl --synth`: `alu_q` против `ALU_Q`). XST машины: 8385 LUT (55 %), 3194 FF, 28 RAMB16, 57 МГц — со всеми мапперами (`ALL_MAPPERS`, +914 LUT против набора open-pocket-gbc). **Клок 33,554432 МГц** (`ce` ÷8, как open-pocket-gbc): 67 МГц не проходит. `src/sim/run.sh` (~2,5 мин, Verilator + ghdl): dmg-acid2 и cgb-acid2 совпадают с эталонными кадрами пиксель в пиксель (CGB boot ROM с быстрым стартом — картинка с ~75-го кадра). Пиксель LCD = `lcd_ce & lcd_clkena` (как `lcd.v` MiSTer).
 
 ### Ф1. Game Boy на Mini G
 - Верх Mini G (от wonderswan), клоки, `gb_sdram` + загрузка `F`, `gb_fb` 800 × 600, OSD, геймпад / клавиатура → кнопки GB, звук HDMI + ЦАП.

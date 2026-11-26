@@ -68,3 +68,6 @@ src/kg_*.stamp
 src/build_*.log
 src/sim/build/
 upstream/
+src/xst_*/
+src/measure/xst_*.log
+src/*.ngc

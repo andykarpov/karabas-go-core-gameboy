@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Nintendo Game Boy / Game Boy Color core for the Karabas Go, Mini and Mini G boards: Xilinx Spartan-6 XC6SLX25, ISE 14.7 (XST).
 
-Status: started 2026-11-26, Ф0 (import + sim + XST fit) next. Docs, in Russian: `docs/PLAN.md` (research, decisions, architecture, phases), `docs/BACKLOG.md`. Follow the phases; record a changed decision in PLAN.md.
+Status: Ф0 merged into local master 2026-11-26 (machine import, `src/sim/run.sh` acid2 checks pass, XST 8385 LUT / 28 RAMB16, clk_sys 33.554 MHz); Ф1 (Mini G) next. Machine alone: `cd src && make gb-xst`; after an RTL change run `src/tools/sv2v.sh`. Docs, in Russian: `docs/PLAN.md` (research, decisions, architecture, phases), `docs/BACKLOG.md`. Follow the phases; record a changed decision in PLAN.md.
 
 Base: the MiSTer Gameboy core as it is in [LakoMoor/open-pocket-gbc](https://github.com/LakoMoor/open-pocket-gbc) `rtl/gb` (GPL-3.0; = MiSTer-devel/Gameboy_MiSTer rtl with the gated clocks removed, the mappers' tri-state buses as wired-OR, the cheat engine left out) plus its `rtl/gb_port` stubs (savestates, cheats). The MiSTer repo itself is the reference (and the source of the SameBoy-based boot ROMs, MIT). Get both with `tools/fetch_upstream.sh` (git-ignored, pinned). Keep the upstream headers; mark changed lines `// karabas:`. The core is GPL v3 (`LICENSE`).
 
