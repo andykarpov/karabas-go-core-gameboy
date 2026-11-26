@@ -4708,7 +4708,7 @@ module mappers (
 		.rumbling(rumbling)
 	);
 	mbc6 map_mbc6(
-		.enable(1'b0),
+		.enable(mbc6),
 		.clk_sys(clk_sys),
 		.ce_cpu(ce),
 		.savestate_load(savestate_load),
@@ -4730,7 +4730,7 @@ module mappers (
 		.has_battery_b(has_battery_b__map_mbc6)
 	);
 	mbc7 map_mbc7(
-		.enable(1'b0),
+		.enable(mbc7),
 		.clk_sys(clk_sys),
 		.ce_cpu(ce),
 		.ce_1x(ce_cpu),
@@ -4762,7 +4762,7 @@ module mappers (
 		.has_battery_b(has_battery_b__map_mbc7)
 	);
 	mmm01 map_mmm01(
-		.enable(1'b0),
+		.enable(mmm01),
 		.clk_sys(clk_sys),
 		.ce_cpu(ce),
 		.savestate_load(savestate_load),
@@ -4809,7 +4809,7 @@ module mappers (
 		.has_battery_b(has_battery_b__map_huc1)
 	);
 	huc3 map_huc3(
-		.enable(1'b0),
+		.enable(huc3),
 		.clk_sys(clk_sys),
 		.ce_cpu(ce),
 		.savestate_load(savestate_load),
@@ -4842,7 +4842,7 @@ module mappers (
 		.has_battery_b(has_battery_b__map_huc3)
 	);
 	gb_camera map_gb_camera(
-		.enable(1'b0),
+		.enable(gb_camera),
 		.clk_sys(clk_sys),
 		.ce_cpu(ce),
 		.savestate_load(savestate_load),
@@ -4866,7 +4866,7 @@ module mappers (
 		.has_battery_b(has_battery_b__map_gb_camera)
 	);
 	tama map_tama(
-		.enable(1'b0),
+		.enable(tama),
 		.clk_sys(clk_sys),
 		.ce_cpu(ce),
 		.ce_32k(ce_32k),
@@ -4895,7 +4895,7 @@ module mappers (
 		.has_battery_b(has_battery_b__map_tama)
 	);
 	rocket map_rocket(
-		.enable(1'b0),
+		.enable(rocket),
 		.clk_sys(clk_sys),
 		.ce_cpu(ce),
 		.savestate_load(savestate_load),
@@ -4919,7 +4919,7 @@ module mappers (
 		.has_battery_b(has_battery_b__map_rocket)
 	);
 	sachen map_sachen(
-		.enable(1'b0),
+		.enable(sachen),
 		.clk_sys(clk_sys),
 		.ce_cpu(ce),
 		.isGBC_game(isGBC_game),
@@ -4939,7 +4939,7 @@ module mappers (
 		.has_battery_b(has_battery_b__map_sachen)
 	);
 	megaduck map_megaduck(
-		.enable(1'b0),
+		.enable(megaduck),
 		.duck_md0_mode(duck_md0_mode),
 		.clk_sys(clk_sys),
 		.ce_cpu(ce),
@@ -4962,7 +4962,7 @@ module mappers (
 		.has_battery_b(has_battery_b__map_megaduck)
 	);
 	misc_mapper map_misc(
-		.enable(1'b0),
+		.enable(~reset & (wisdom_tree | mani161)),
 		.clk_sys(clk_sys),
 		.ce_cpu(ce),
 		.mapper_sel(mani161),
