@@ -35,7 +35,7 @@ wire hs, vs, de;
 
 gb_fb dut (
 	.clk(clk), .lcd_ce(lcd_ce), .lcd_clkena(lcd_clkena), .lcd_data(lcd_data), .lcd_data_gb(lcd_data_gb),
-	.lcd_on(1'b1), .lcd_vsync(lcd_vsync), .is_gbc(`GB == 0), .blend(`BLEND == 1),
+	.lcd_on(1'b1), .lcd_vsync(lcd_vsync), .is_gbc(`GB == 0), .blend(`BLEND == 1), .palette(2'd0), .cc(1'b0),
 	.MA(MA), .MD(MD), .MWR_N(MWR_N), .MRD_N(MRD_N),
 	.clk_vid(clk_vid), .rgb(rgb), .hs(hs), .vs(vs), .de(de)
 );

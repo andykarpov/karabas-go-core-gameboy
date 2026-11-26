@@ -55,9 +55,14 @@
 
 **Итог Ф2 (2026-11-26):** `.sav` в формате MiSTer: ОЗУ батарейного картриджа (`ram_mask_file + 1` секторов) и для MBC3 + TIMER (байт заголовка 0147 = 0F / 10) ещё сектор часов (метка Unix и регистры MBC3, little endian). `kg_bk_ram` (SBITS 9) → `gb_bk` (ОЗУ в SDRAM через ch2, сектор часов: чтение — пара значений на байте 0, загрузка — `bk_rtc_wr` слова 0..4 в cart_top, кроме метки 0 / FFFFFFFF нового файла). Отметки: запись в ОЗУ картриджа — её сектор и сектор часов. `gb_rtc`: регистры RTC прошивки (rtc_mode 2, BCD) → секунды Unix, публикация после двух совпавших кругов чтения. MBC7 / TAMA5 (ОЗУ в BRAM) не сохраняются — в беклог. Тесты: `sim/run_bk.sh` (tb_rtc — даты с високосными годами, tb_bk — ОЗУ, путь машины, сектор часов), тестовый ROM `sim/tests/savetest.gb` (`mk_savetest.py`: счётчик запусков, регистры часов). Mini G 26112602: 75 % LUT, 92 % слайсов, тайминги сошлись. **На плате:** `savetest.sav` 8704 байт, счётчик 1 → 2 между запусками, часы MBC3 продолжились с учётом выключенного времени (метка +120 с, часы +119 с); µCity — `.sav` 128 КБ. Сейвы прошивка кладёт в `/gameboy/saves/`.
 
-### Ф3. Опции, Go / Mini, релиз
-- OSD: палитры DMG, коррекция цвета GBC, быстрый старт, (смешение кадров — против мерцания).
-- Верхи Go / Mini (`mktops.py`), три платы, `gameboy.kg`, README.md + README.ru.md, `cores.json` karabas-go.
+### Ф3. Опции, базовый набор платы, Go / Mini, релиз
+- OSD: палитры DMG (Grey / Green / Pocket / Light), коррекция цвета GBC (LCD / Raw, формула Gambatte), смешение кадров, быстрый старт.
+- **Базовый набор платы** (правило всех ядер; в Ф1 пропущен, добавлен в Ф3 по напоминанию пользователя): пики звука в MCU (`audio_peaks`, `MATRIX_CMD`), АЦП PCM1808 (линейный вход + MIDI-синтезатор платы) в микс, FT_CLK_OUT 8 МГц (есть с Ф1), MIDI_TX = 1 (у GB нет MIDI). Лента: у Game Boy её нет — TAPE_OUT = 0, монитора ленты нет.
+- Звук: DC-фильтр (смещение ≈ +1800 у gbc_snd) и ×4.
+- Верхи Go / Mini (`mktops.py`: Go — VGA, V_CLK = инвертированный clk_vid, без АЦП; Mini — сигма-дельта ЦАП), три платы, `gameboy.kg`, README.md + README.ru.md, `cores.json` karabas-go.
+- Репо публичное с 2026-11-26 (пользователь).
+
+**Итог Ф3 (2026-11-26):** `gb_fb`: палитры DMG (Grey / Green / Pocket / Light, по умолчанию Green) и коррекция цвета GBC (LCD = Gambatte, Raw) при записи пикселя. Звук: DC-фильтр (y = x − x′ + y′ − y′ / 1024 на 48 кГц) и ×4, АЦП PCM1808 (i2s_transceiver от core-ocean240, ½ шкалы) в микс, `audio_peaks` микса → `MATRIX_CMD` (kg_mcu2 ENABLE_AUX). OSD: Model, GB palette (Menu+P), GBC colours, Frame blend, Boot, Reset. `tools/mktops.py` (от core-wonderswan): Go — VGA 800 × 600 с положительными синхро, V_CLK = инвертированный clk_vid, без АЦП; Mini — сигма-дельта. Сборки 26112603: Mini G 78 % LUT / 95 % слайсов, Go 69 % / 88 %, Mini 78 % / 95 %, все тайминги сошлись (map -t 2). **На плате Mini G:** четыре палитры на dmg-acid2, LCD / Raw на µCity, звук по HDMI без смещения (среднее ≈ 0), пик −9,4 дБ. Go / Mini на платах не запускались. README.md / README.ru.md.
 
 ## Риски
 
